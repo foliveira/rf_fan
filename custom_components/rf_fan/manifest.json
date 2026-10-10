@@ -10,5 +10,5 @@
   "iot_class": "assumed_state",
   "issue_tracker": "https://github.com/clevrdavid/rf_fan/issues",
   "requirements": ["python-broadlink>=1.0.6"],
-  "version": "1.1.0"
+  "version": "2.0.0"
 }
