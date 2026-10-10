@@ -66,7 +66,7 @@ async def test_wizard_learns_the_fan(
     hass: HomeAssistant, rm4: FakeRM4Pro, broadlink_rf: str
 ) -> None:
     flow = await _start_fan_setup(hass, broadlink_rf)
-    flow, _ = await _learn(
+    flow, labels = await _learn(
         hass,
         rm4,
         flow,
@@ -74,6 +74,7 @@ async def test_wizard_learns_the_fan(
         hass.config_entries.flow.async_configure,
     )
     assert flow["type"] is FlowResultType.CREATE_ENTRY, flow
+    assert labels == ["Off", "Speed 1 of 1 (lowest)"]
     assert set(flow["data"]["commands"]) == {"off", "speed_1"}
     assert rm4.arms[0] == 433.92  # direct capture listens at the set frequency
     await hass.async_block_till_done()

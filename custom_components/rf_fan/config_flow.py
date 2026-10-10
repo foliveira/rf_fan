@@ -74,15 +74,15 @@ FREQ_OPTIONS = [
 ]
 
 ENTITY_TYPE_OPTIONS = [
-    selector.SelectOptionDict(value=ENTITY_TYPE_FAN,    label="Ventilador (Fan)"),
-    selector.SelectOptionDict(value=ENTITY_TYPE_COVER,  label="Persiana / Toldo (Cover)"),
-    selector.SelectOptionDict(value=ENTITY_TYPE_LIGHT,  label="Luz (Light)"),
-    selector.SelectOptionDict(value=ENTITY_TYPE_BUTTON, label="Botón suelto (Button)"),
+    selector.SelectOptionDict(value=ENTITY_TYPE_FAN,    label="Fan"),
+    selector.SelectOptionDict(value=ENTITY_TYPE_COVER,  label="Cover (blind / awning)"),
+    selector.SelectOptionDict(value=ENTITY_TYPE_LIGHT,  label="Light"),
+    selector.SelectOptionDict(value=ENTITY_TYPE_BUTTON, label="Standalone button"),
 ]
 
 LIGHT_MODE_OPTIONS = [
-    selector.SelectOptionDict(value=LIGHT_MODE_TOGGLE, label="Un solo botón (toggle on/off)"),
-    selector.SelectOptionDict(value=LIGHT_MODE_ON_OFF, label="Dos botones (on y off separados)"),
+    selector.SelectOptionDict(value=LIGHT_MODE_TOGGLE, label="One button (toggles on/off)"),
+    selector.SelectOptionDict(value=LIGHT_MODE_ON_OFF, label="Two buttons (separate on and off)"),
 ]
 
 
@@ -176,15 +176,15 @@ class _LearnFlowMixin:
         # Strip key_prefix if present
         bare = key.split("_", 1)[1] if "_" in key and not key.startswith("speed_") and not key.startswith("custom_") else key
         if bare == CMD_OFF or key == CMD_OFF:
-            return "Apagar (Off)"
+            return "Off"
         if bare == CMD_ON or key == CMD_ON:
-            return "Encender (On)"
+            return "On"
         if bare == CMD_LIGHT or key == CMD_LIGHT:
-            return "Luz (Light toggle)"
+            return "Light"
         if bare == CMD_OPEN or key == CMD_OPEN:
-            return "Abrir (Open)"
+            return "Open"
         if bare == CMD_CLOSE or key == CMD_CLOSE:
-            return "Cerrar (Close)"
+            return "Close"
         if bare == CMD_STOP or key == CMD_STOP:
             return "Stop"
         if key.startswith("speed_") or bare.startswith("speed_"):
@@ -193,10 +193,10 @@ class _LearnFlowMixin:
             total = self._speed_count
             hint = ""
             if number == "1":
-                hint = " (mínima)"
+                hint = " (lowest)"
             elif number == str(total):
-                hint = " (máxima)"
-            return f"Velocidad {number} de {total}{hint}"
+                hint = " (highest)"
+            return f"Speed {number} of {total}{hint}"
         return self._custom_names.get(key, key)
 
     def _reset_learn_state(self) -> None:
