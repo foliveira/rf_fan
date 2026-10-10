@@ -98,6 +98,16 @@ integration:
 - Some AC fans run weak on low/medium speeds — that's the fan's speed **capacitor**
   (hardware), not the codes; this integration reproduces the remote faithfully.
 
+## Development
+
+The tests run Home Assistant 2026.10.0 against a simulated RM4 Pro and need
+Python 3.14:
+
+```
+pip install -r requirements_test.txt
+pytest
+```
+
 ## License
 
 [MIT](LICENSE)

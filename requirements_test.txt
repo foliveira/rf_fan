@@ -1,0 +1,5 @@
+# Test dependencies, pinned to Home Assistant 2026.10.0 (needs Python 3.14).
+pytest-homeassistant-custom-component==0.13.371
+python-broadlink==1.0.6
+rf-protocols==4.3.0
+infrared-protocols==10.1.0
