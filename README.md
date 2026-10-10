@@ -26,7 +26,9 @@ doesn't give you a *fan* with speed control. This integration does:
 
 ## Requirements
 
-- **Home Assistant 2026.5 or newer** (the `radio_frequency` platform ships in 2026.5).
+- **Home Assistant 2026.10 or newer**. From 2026.10 the Broadlink integration uses
+  the asynchronous `python-broadlink` 1.0 library, which this version needs. On
+  Home Assistant 2026.5 to 2026.9, stay on version 1.1.0 of this integration.
 - A **Broadlink RM Pro / RM4 Pro** (or other RF-capable Broadlink) already set up in
   the **Broadlink integration**. Its `radio_frequency` transmitter is what this
   integration sends through.
