@@ -90,6 +90,10 @@ integration:
    `RadioFrequencyCommand` subclass carrying those timings — transmitter-agnostic,
    on Home Assistant's supported rails.
 
+Version 2.0 decodes with python-broadlink's corrected timing unit (about 30.45 us
+instead of 32.84 us). Codes learned with 1.x are re-decoded from their stored
+Broadlink packets on upgrade, so they replay with the timings the remote sent.
+
 ## Notes & limitations
 
 - **RF is one-way**, so entities are **optimistic** (`assumed_state`) — Home

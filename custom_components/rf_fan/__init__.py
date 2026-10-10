@@ -8,13 +8,20 @@ Fans, covers (blinds/awnings), lights and buttons are all set up from the UI.
 
 from __future__ import annotations
 
+from base64 import b64decode
 import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_CUSTOMS, CONF_SUB_ENTITIES, ENTITY_TYPE_BUTTON
+from .const import (
+    CONF_COMMANDS,
+    CONF_CUSTOMS,
+    CONF_SUB_ENTITIES,
+    ENTITY_TYPE_BUTTON,
+)
+from .rf import decode_broadlink_packet
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +61,28 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info(
             "rf_fan: migration complete — %d custom button(s) converted to sub-entities",
             len(legacy_customs),
+        )
+
+    if entry.version == 2 and entry.minor_version < 2:
+        # v2.1 → v2.2: timings were decoded with the old Broadlink tick (32.84 us),
+        # which python-broadlink 1.0 corrected to ~30.45 us. Home Assistant now
+        # encodes with the corrected tick, so re-decode each stored packet with it.
+        commands = {
+            key: {
+                **command,
+                "timings": decode_broadlink_packet(b64decode(command["b64"]))[0],
+            }
+            if command.get("b64")
+            else command
+            for key, command in entry.data.get(CONF_COMMANDS, {}).items()
+        }
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_COMMANDS: commands}, minor_version=2
+        )
+        _LOGGER.info(
+            "rf_fan: re-decoded %d learned code(s) of '%s' with the corrected tick",
+            len(commands),
+            entry.title,
         )
 
     return True

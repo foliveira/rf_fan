@@ -348,6 +348,7 @@ class RfFanConfigFlow(_LearnFlowMixin, ConfigFlow, domain=DOMAIN):
     """Two-screen setup wizard + button-learning for an RF device."""
 
     VERSION = 2
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialise wizard state."""

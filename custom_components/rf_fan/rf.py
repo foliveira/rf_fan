@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 from broadlink.exceptions import ReadError, StorageError
+from broadlink.remote import TICK
 
 from homeassistant.core import HomeAssistant
 
@@ -22,8 +23,9 @@ from .const import BROADLINK_DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Broadlink RF front-end timing resolution. Must match encode_rf_packet().
-_TICK_US = 32.84
+# Broadlink RF front-end timing resolution (about 30.45 us). Must match
+# encode_rf_packet(), which takes it from the same library constant.
+_TICK_US = TICK
 
 # Matches the Broadlink remote's own learning behaviour.
 LEARNING_TIMEOUT = 30.0  # seconds
