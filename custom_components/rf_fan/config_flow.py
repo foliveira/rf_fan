@@ -6,7 +6,8 @@ Setup is split into two screens:
 Then the wizard walks through learning each button.
 
 The options flow (Configure) lets you re-learn existing buttons or add new
-sub-entities (fan / cover / light / button) to an existing device.
+sub-entities (fan / cover / light / button) to an existing device. Learning
+pauses background listening on the Broadlink it uses until the flow ends.
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ from .const import (
     LIGHT_MODE_ON_OFF,
     LIGHT_MODE_TOGGLE,
 )
+from .listener import async_pause_listening, async_resume_listening
 from .rf import async_capture_packet, async_sweep_frequency, find_rf_devices
 
 _LOGGER = logging.getLogger(__name__)
@@ -162,6 +164,8 @@ class _LearnFlowMixin:
     _speed_count: int
     _direct: bool
     _entity_type: str
+    # The Broadlink (config entry id) this flow took off background listening.
+    _paused_device: str | None = None
 
     def _label(self, key: str | None) -> str:
         """Human-friendly label for a command key."""
@@ -203,9 +207,22 @@ class _LearnFlowMixin:
         """Called after a code is kept. Implemented by the concrete flow."""
         raise NotImplementedError
 
+    async def _async_pause_listening(self) -> None:
+        """Take the Broadlink's receiver off background listening while learning."""
+        if self._paused_device is None:
+            self._paused_device = self._device.config.entry_id
+            await async_pause_listening(self.hass, self._paused_device)
+
+    @callback
+    def async_remove(self) -> None:
+        """Give the receiver back to background listening when the flow ends."""
+        if self._paused_device is not None:
+            async_resume_listening(self.hass, self._paused_device)
+
     async def async_step_learn(self, user_input=None) -> ConfigFlowResult:
         """Learn a button - either direct capture or the two-phase sweep."""
         label = self._label(self._current_key)
+        await self._async_pause_listening()
 
         if self._direct:
             # Direct capture: listen at the chosen frequency, single press.

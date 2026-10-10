@@ -23,8 +23,11 @@ _FRAME_GAP_US = 1300  # a gap longer than this separates repeated frames
 _LONG_US = 600  # a pulse/gap at least this long counts as two cells
 
 
-def split_frames(timings: list[int]) -> list[list[int]]:
-    """Trim idle, then split a capture into its repeated frames."""
+def split_frames(timings: list[int], gap: float = _FRAME_GAP_US) -> list[list[int]]:
+    """Trim idle, then split a capture into its repeated frames.
+
+    Any space longer than ``gap`` microseconds ends a frame.
+    """
     ts = [int(t) for t in timings]
     while ts and abs(ts[0]) > _IDLE_US:
         ts.pop(0)
@@ -34,7 +37,7 @@ def split_frames(timings: list[int]) -> list[list[int]]:
     frames: list[list[int]] = []
     current: list[int] = []
     for t in ts:
-        if t < 0 and abs(t) > _FRAME_GAP_US:
+        if t < 0 and abs(t) > gap:
             if current:
                 frames.append(current)
                 current = []

@@ -7,9 +7,10 @@ from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util.percentage import (
@@ -33,6 +34,7 @@ from .const import (
     DOMAIN,
     ENTITY_TYPE_FAN,
 )
+from .listener import PressTracker, signal_heard
 
 
 async def async_setup_entry(
@@ -98,6 +100,8 @@ class RfFan(FanEntity, RestoreEntity):
         self._has_on = has_on
         self._direct: bool = data.get(CONF_DIRECT, False)
         self._key_prefix = key_prefix
+        self._entry_id = entry.entry_id
+        self._presses = PressTracker()
         self._attr_name = name if key_prefix else None
         uid_suffix = f"fan_{key_prefix}" if key_prefix else "fan"
 
@@ -120,12 +124,43 @@ class RfFan(FanEntity, RestoreEntity):
         return f"{self._key_prefix}_{cmd}" if self._key_prefix else cmd
 
     async def async_added_to_hass(self) -> None:
-        """Restore the last assumed state across restarts."""
+        """Restore the last assumed state, then follow the physical remote."""
         await super().async_added_to_hass()
         if (last := await self.async_get_last_state()) is not None:
             self._attr_is_on = last.state == "on"
             if (pct := last.attributes.get("percentage")) is not None:
                 self._attr_percentage = pct
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, signal_heard(self._entry_id), self._async_heard
+            )
+        )
+
+    @callback
+    def _async_heard(self, key: str) -> None:
+        """Take on the state a press on the physical remote leaves the fan in."""
+        speeds = {
+            self._pk(f"speed_{i}"): i for i in range(1, self._speed_count + 1)
+        }
+        if key not in (self._pk(CMD_OFF), self._pk(CMD_ON), *speeds):
+            return
+        if not self._presses.heard(key):
+            return
+        if key == self._pk(CMD_OFF):
+            self._attr_is_on = False
+            self._attr_percentage = 0
+        elif key in speeds:
+            self._attr_is_on = True
+            self._attr_percentage = ranged_value_to_percentage(
+                (1, self._speed_count), speeds[key]
+            )
+        else:  # On resumes the last speed, or speed 1, as async_turn_on assumes
+            self._attr_is_on = True
+            if not self._attr_percentage:
+                self._attr_percentage = ranged_value_to_percentage(
+                    (1, self._speed_count), 1
+                )
+        self.async_write_ha_state()
 
     async def _send(self, key: str) -> None:
         """Transmit a learned command by key."""
@@ -134,6 +169,7 @@ class RfFan(FanEntity, RestoreEntity):
             raise HomeAssistantError(
                 f"Command '{key}' not learned."
             )
+        self._presses.sent(key)
         await async_send_stored(
             self.hass,
             self._transmitter,

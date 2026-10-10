@@ -22,6 +22,8 @@ doesn't give you a *fan* with speed control. This integration does:
   each one by pressing it on the remote.
 - Creates an **optimistic `fan` entity** (Off + N speeds, optional On), an optional
   **`light` entity**, and one **`button` entity** per custom code.
+- **Follows the physical remote**: the Broadlink listens in the background, so
+  using the remote updates the entities in Home Assistant.
 - **Re-learn or add buttons** any time from the entry's *Configure* screen.
 
 ## Requirements
@@ -78,6 +80,32 @@ automatically transmitted as a cleaned, repeated frame so they trigger reliably.
 Open the integration entry → **Configure** to re-learn a single button or add a new
 one without starting over.
 
+## Following the physical remote
+
+The Broadlink that transmits for a device also listens for that device's remote.
+When it hears a learned code, the entity takes on the state that button leaves the
+device in: a fan speed or Off, a light toggled (or switched on/off with separate
+buttons), a cover opened or closed. Custom buttons have no state, so nothing
+changes for them.
+
+Things to know:
+
+- Listening keeps the Broadlink's receiver in RF learning mode, polling it twice a
+  second. While it runs, learning codes with the **Broadlink integration itself**
+  (`remote.learn_command`, IR or RF) on the same Broadlink will not work reliably.
+  Learning through this integration's wizard pauses listening on its own.
+- A button heard again within 2 seconds counts as the same press, because a held
+  button keeps repeating. Two quick presses of a light toggle therefore count once.
+  The code Home Assistant has just sent is ignored the same way.
+- The Broadlink listens at one frequency. If devices on the same Broadlink use
+  different frequencies, only the first one set up is heard and a warning is logged.
+- Only devices whose transmitter is a Broadlink are listened for.
+- Remotes with rolling codes send a different code on every press, so they cannot
+  be matched.
+
+To see what the Broadlink hears and what it matched, enable debug logging for
+`custom_components.rf_fan`.
+
 ## How it works
 
 The `radio_frequency` platform is **send-only** — it has no learning. So this
@@ -89,6 +117,10 @@ integration:
 3. **Transmits** it back through `radio_frequency.async_send_command` via a small
    `RadioFrequencyCommand` subclass carrying those timings — transmitter-agnostic,
    on Home Assistant's supported rails.
+4. **Listens** through python-broadlink's open-ended RF capture, which re-arms the
+   Broadlink when it drops out of learning mode and after every send. Each heard
+   capture is split into its repeated frames and compared, pulse by pulse with a
+   tolerance for receiver jitter, with a frame of each learned code.
 
 Version 2.0 decodes with python-broadlink's corrected timing unit (about 30.45 us
 instead of 32.84 us). Codes learned with 1.x are re-decoded from their stored
@@ -97,7 +129,9 @@ Broadlink packets on upgrade, so they replay with the timings the remote sent.
 ## Notes & limitations
 
 - **RF is one-way**, so entities are **optimistic** (`assumed_state`) — Home
-  Assistant tracks what it last sent; it can't read the fan's actual state. The
+  Assistant tracks what it last sent and what the Broadlink last heard from the
+  remote; it can't read the fan's actual state. Presses the Broadlink misses (out
+  of range, or during learning) leave the state behind. The
   discrete-speed + dedicated-Off design keeps this accurate in practice.
 - Learning currently **requires a Broadlink** (it's the capture device). Transmit is
   transmitter-agnostic via the `radio_frequency` platform.

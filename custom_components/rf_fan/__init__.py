@@ -4,6 +4,8 @@ A learn-and-replay Home Assistant integration for RF devices: capture your
 remote's codes with a Broadlink RM Pro / RM4 Pro through a guided wizard, then
 transmit them via Home Assistant's native ``radio_frequency`` platform.
 Fans, covers (blinds/awnings), lights and buttons are all set up from the UI.
+The Broadlink also listens in the background, so presses on the physical
+remote update the entities' state.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from .const import (
     CONF_SUB_ENTITIES,
     ENTITY_TYPE_BUTTON,
 )
+from .listener import async_setup_listening
 from .rf import decode_broadlink_packet
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +94,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from a config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    async_setup_listening(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

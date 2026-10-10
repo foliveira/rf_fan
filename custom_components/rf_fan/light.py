@@ -6,8 +6,9 @@ from typing import Any
 
 from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -30,6 +31,7 @@ from .const import (
     LIGHT_MODE_ON_OFF,
     LIGHT_MODE_TOGGLE,
 )
+from .listener import PressTracker, signal_heard
 
 
 async def async_setup_entry(
@@ -82,6 +84,8 @@ class RfLight(LightEntity, RestoreEntity):
         self._direct = entry.data.get(CONF_DIRECT, False)
         self._light_mode = light_mode
         self._key_prefix = key_prefix
+        self._entry_id = entry.entry_id
+        self._presses = PressTracker()
         self._attr_name = name
         uid_suffix = f"light_{key_prefix}" if key_prefix else "light"
         self._attr_unique_id = f"{entry.entry_id}_{uid_suffix}"
@@ -96,16 +100,37 @@ class RfLight(LightEntity, RestoreEntity):
         return f"{self._key_prefix}_{cmd}" if self._key_prefix else cmd
 
     async def async_added_to_hass(self) -> None:
-        """Restore the last assumed state across restarts."""
+        """Restore the last assumed state, then follow the physical remote."""
         await super().async_added_to_hass()
         if (last := await self.async_get_last_state()) is not None:
             self._attr_is_on = last.state == "on"
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, signal_heard(self._entry_id), self._async_heard
+            )
+        )
+
+    @callback
+    def _async_heard(self, key: str) -> None:
+        """Take on the state a press on the physical remote leaves the light in."""
+        if self._light_mode == LIGHT_MODE_TOGGLE:
+            keys = {self._pk(CMD_LIGHT)}
+        else:
+            keys = {self._pk(CMD_ON), self._pk(CMD_OFF)}
+        if key not in keys or not self._presses.heard(key):
+            return
+        if self._light_mode == LIGHT_MODE_TOGGLE:
+            self._attr_is_on = not self._attr_is_on
+        else:
+            self._attr_is_on = key == self._pk(CMD_ON)
+        self.async_write_ha_state()
 
     async def _send(self, cmd: str) -> None:
         key = self._pk(cmd)
         command = self._commands.get(key)
         if not command:
             return
+        self._presses.sent(key)
         await async_send_stored(
             self.hass,
             self._transmitter,

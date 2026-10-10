@@ -1,5 +1,6 @@
 """Test helpers: an in-memory RM4 Pro and builders for remote presses."""
 
+import asyncio
 from base64 import b64encode
 import random
 import struct
@@ -185,4 +186,14 @@ async def setup_entry(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     """Add and set up a config entry."""
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def hear(hass: HomeAssistant, rm4: FakeRM4Pro, packet: bytes) -> None:
+    """The RM4 Pro hears a press; wait (up to 4 s) until it is taken."""
+    rm4.air.append(packet)
+    for _ in range(40):
+        await asyncio.sleep(0.1)
+        if packet not in rm4.air:
+            break
     await hass.async_block_till_done()

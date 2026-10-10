@@ -6,8 +6,9 @@ from typing import Any
 
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -27,6 +28,7 @@ from .const import (
     DOMAIN,
     ENTITY_TYPE_COVER,
 )
+from .listener import PressTracker, signal_heard
 
 
 def _cover_key(prefix: str, cmd: str) -> str:
@@ -77,6 +79,8 @@ class RfCover(CoverEntity, RestoreEntity):
         self._direct: bool = entry.data.get(CONF_DIRECT, False)
         self._has_stop: bool = entry.data.get(CONF_HAS_STOP, False)
         self._key_prefix = key_prefix
+        self._entry_id = entry.entry_id
+        self._presses = PressTracker()
         self._attr_name = name
         uid_suffix = f"cover_{key_prefix}" if key_prefix else "cover"
         self._attr_unique_id = f"{entry.entry_id}_{uid_suffix}"
@@ -98,6 +102,25 @@ class RfCover(CoverEntity, RestoreEntity):
                 self._attr_is_closed = True
             elif last.state == "open":
                 self._attr_is_closed = False
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, signal_heard(self._entry_id), self._async_heard
+            )
+        )
+
+    @callback
+    def _async_heard(self, key: str) -> None:
+        """Take on the state a press on the physical remote leaves the cover in."""
+        if key == self._k(CMD_OPEN):
+            closed = False
+        elif key == self._k(CMD_CLOSE):
+            closed = True
+        else:
+            return
+        if not self._presses.heard(key):
+            return
+        self._attr_is_closed = closed
+        self.async_write_ha_state()
 
     def _k(self, cmd: str) -> str:
         return _cover_key(self._key_prefix, cmd)
@@ -107,6 +130,7 @@ class RfCover(CoverEntity, RestoreEntity):
         command = self._commands.get(key)
         if not command:
             return
+        self._presses.sent(key)
         await async_send_stored(
             self.hass,
             self._transmitter,
