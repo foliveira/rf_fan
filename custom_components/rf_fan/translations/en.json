@@ -63,7 +63,15 @@
         "menu_options": {
           "relearn": "Re-learn a button",
           "add_entity": "Add a new entity",
+          "listen": "Follow the physical remote",
           "finish": "Done"
+        }
+      },
+      "listen": {
+        "title": "Follow the physical remote",
+        "description": "The Broadlink listens in the background and updates this device's state when its remote is used. Turn this off if you need the Broadlink's receiver for something else, such as learning codes with the Broadlink integration.",
+        "data": {
+          "listen": "Update state when the remote is used"
         }
       },
       "relearn": {

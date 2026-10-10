@@ -29,6 +29,7 @@ CONF_LIGHT_MODE = "light_mode"         # "toggle" | "on_off"
 CONF_CUSTOMS = "customs"               # stored list of {"key", "name"}
 CONF_COMMANDS = "commands"
 CONF_DIRECT = "direct_capture"  # skip the frequency sweep, listen at the set freq
+CONF_LISTEN = "listen"  # follow presses on the physical remote (default on)
 
 # Stored list of sub-entities added via Configure (each has entity_type + name + key prefix)
 CONF_SUB_ENTITIES = "sub_entities"

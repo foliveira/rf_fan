@@ -126,3 +126,23 @@ async def test_malformed_capture_does_not_stop_listening(
     await hear(hass, rm4, bytes([0xB1, 0x00, 0x02, 0x00, 0x00, 0x01, 0x2C, 0x0C]))
     await hear(hass, rm4, burst(FAN_CODES["speed_3"], skip=2))
     assert _fan(hass).attributes["percentage"] == 100
+
+
+async def test_listening_can_be_turned_off(
+    hass: HomeAssistant, rm4: FakeRM4Pro, broadlink_rf: str
+) -> None:
+    entry = fan_entry(broadlink_rf)
+    await setup_entry(hass, entry)
+    configure = hass.config_entries.options.async_configure
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await configure(flow["flow_id"], {"next_step_id": "listen"})
+    assert flow["step_id"] == "listen"
+    flow = await configure(flow["flow_id"], {"listen": False})
+    flow = await configure(flow["flow_id"], {"next_step_id": "finish"})
+    assert flow["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.data["listen"] is False
+    await asyncio.sleep(0.1)
+    assert not rm4.capture_active
+    await hear(hass, rm4, burst(FAN_CODES["speed_3"]))
+    assert _fan(hass).state == "off"

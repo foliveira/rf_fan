@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_COMMANDS,
     CONF_CUSTOMS,
+    CONF_LISTEN,
     CONF_SUB_ENTITIES,
     ENTITY_TYPE_BUTTON,
 )
@@ -94,7 +95,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from a config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    async_setup_listening(hass, entry)
+    if entry.data.get(CONF_LISTEN, True):
+        async_setup_listening(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

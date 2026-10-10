@@ -88,12 +88,16 @@ device in: a fan speed or Off, a light toggled (or switched on/off with separate
 buttons), a cover opened or closed. Custom buttons have no state, so nothing
 changes for them.
 
+Listening is on by default. To turn it off for a device, open its entry, choose
+**Configure → Follow the physical remote** and untick the option.
+
 Things to know:
 
 - Listening keeps the Broadlink's receiver in RF learning mode, polling it twice a
   second. While it runs, learning codes with the **Broadlink integration itself**
   (`remote.learn_command`, IR or RF) on the same Broadlink will not work reliably.
-  Learning through this integration's wizard pauses listening on its own.
+  Turn listening off for every device on that Broadlink first. Learning through
+  this integration's wizard pauses listening on its own.
 - A button heard again within 2 seconds counts as the same press, because a held
   button keeps repeating. Two quick presses of a light toggle therefore count once.
   The code Home Assistant has just sent is ignored the same way.
@@ -131,7 +135,7 @@ Broadlink packets on upgrade, so they replay with the timings the remote sent.
 - **RF is one-way**, so entities are **optimistic** (`assumed_state`) — Home
   Assistant tracks what it last sent and what the Broadlink last heard from the
   remote; it can't read the fan's actual state. Presses the Broadlink misses (out
-  of range, or during learning) leave the state behind. The
+  of range, during learning, or with listening off) leave the state behind. The
   discrete-speed + dedicated-Off design keeps this accurate in practice.
 - Learning currently **requires a Broadlink** (it's the capture device). Transmit is
   transmitter-agnostic via the `radio_frequency` platform.

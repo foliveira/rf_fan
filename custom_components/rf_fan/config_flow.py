@@ -5,9 +5,10 @@ Setup is split into two screens:
   Screen 2 – entity-specific options (speeds for fan, stop button for cover, etc.).
 Then the wizard walks through learning each button.
 
-The options flow (Configure) lets you re-learn existing buttons or add new
-sub-entities (fan / cover / light / button) to an existing device. Learning
-pauses background listening on the Broadlink it uses until the flow ends.
+The options flow (Configure) lets you re-learn existing buttons, add new
+sub-entities (fan / cover / light / button) to an existing device, or turn off
+following the physical remote. Learning pauses background listening on the
+Broadlink it uses until the flow ends.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from .const import (
     CONF_HAS_ON,
     CONF_HAS_STOP,
     CONF_LIGHT_MODE,
+    CONF_LISTEN,
     CONF_NAME,
     CONF_SPEED_COUNT,
     CONF_SUB_ENTITIES,
@@ -534,6 +536,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
         self._pending: dict[str, Any] | None = None
         self._learn_error: str | None = None
         self._entity_type: str = ENTITY_TYPE_FAN
+        self._listen: bool = True
         # State for add-entity wizard
         self._adding_entity_type: str = ENTITY_TYPE_BUTTON
         self._adding_name: str = ""
@@ -551,6 +554,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
         self._speed_count = entry.data.get(CONF_SPEED_COUNT, 0)
         self._direct = entry.data.get(CONF_DIRECT, False)
         self._entity_type = entry.data.get(CONF_ENTITY_TYPE, ENTITY_TYPE_FAN)
+        self._listen = entry.data.get(CONF_LISTEN, True)
 
     async def async_step_init(self, user_input=None) -> ConfigFlowResult:
         """Show the main configure menu."""
@@ -563,7 +567,27 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
         self._device = next(iter(devices.values()))
 
         return self.async_show_menu(
-            step_id="init", menu_options=["relearn", "add_entity", "finish"]
+            step_id="init",
+            menu_options=["relearn", "add_entity", "listen", "finish"],
+        )
+
+    # ------------------------------------------------------------------
+    # Follow the physical remote (background listening) on or off
+    # ------------------------------------------------------------------
+    async def async_step_listen(self, user_input=None) -> ConfigFlowResult:
+        """Choose whether the Broadlink listens for the physical remote."""
+        if user_input is not None:
+            self._listen = user_input[CONF_LISTEN]
+            return await self.async_step_init()
+        return self.async_show_form(
+            step_id="listen",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_LISTEN, default=self._listen
+                    ): selector.BooleanSelector()
+                }
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -713,6 +737,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
                 CONF_CUSTOMS: self._customs,
                 CONF_SUB_ENTITIES: self._sub_entities,
                 CONF_DIRECT: self._direct,
+                CONF_LISTEN: self._listen,
             },
         )
         return self.async_create_entry(title="", data={})
