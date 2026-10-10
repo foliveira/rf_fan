@@ -19,6 +19,7 @@ CONF_ENTITY_TYPE = "entity_type"
 # Fan-specific
 CONF_SPEED_COUNT = "speed_count"
 CONF_HAS_ON = "has_on_button"
+CONF_HAS_LIGHT = "has_light"  # the fan's light, one toggle button learned as "light"
 
 # Cover-specific
 CONF_HAS_STOP = "has_stop_button"

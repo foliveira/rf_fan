@@ -59,7 +59,10 @@ directory and restart.
    - **Speed count** — how many discrete speeds (e.g. 3).
    - **Separate On button** — tick if the remote has a dedicated On (some only have
      speed buttons + Off).
-   - **Has a light** — tick if the remote has a light toggle.
+   - **Has a light** — tick if the fan has a light: the wizard then learns the
+     remote's light button and adds a light entity. Leave it unticked to skip it.
+     For a light with separate on and off buttons, leave it unticked and add the
+     light afterwards under *Configure → Add a new entity → Light*.
    - **Custom buttons** — a comma/newline-separated list of any extras (e.g.
      `Reverse, Timer`).
 3. The wizard walks you through learning each button. **Press the button on the

@@ -21,6 +21,7 @@ from .const import (
     CONF_COMMANDS,
     CONF_DIRECT,
     CONF_FREQUENCY,
+    CONF_HAS_LIGHT,
     CONF_LIGHT_MODE,
     CONF_NAME,
     CONF_SUB_ENTITIES,
@@ -46,8 +47,8 @@ async def async_setup_entry(
 
     primary_type = data.get("entity_type", ENTITY_TYPE_FAN)
 
-    # Legacy: fan with integrated light toggle
-    if primary_type == ENTITY_TYPE_FAN and data.get("has_light") and CMD_LIGHT in commands:
+    # Fan with an integrated light (one toggle button)
+    if primary_type == ENTITY_TYPE_FAN and data.get(CONF_HAS_LIGHT) and CMD_LIGHT in commands:
         entities.append(RfLight(entry, name="Light", key_prefix="", light_mode=LIGHT_MODE_TOGGLE))
 
     # Primary entity is a light
@@ -63,6 +64,17 @@ async def async_setup_entry(
                 name=sub["name"],
                 key_prefix=sub["key_prefix"],
                 light_mode=sub.get("light_mode", LIGHT_MODE_TOGGLE),
+            ))
+        elif (
+            sub.get("entity_type") == ENTITY_TYPE_FAN
+            and sub.get("has_light")
+            and f"{sub['key_prefix']}_{CMD_LIGHT}" in commands
+        ):
+            entities.append(RfLight(
+                entry,
+                name=f"{sub['name']} light",
+                key_prefix=sub["key_prefix"],
+                light_mode=LIGHT_MODE_TOGGLE,
             ))
 
     if entities:

@@ -44,6 +44,7 @@ from .const import (
     CONF_DIRECT,
     CONF_ENTITY_TYPE,
     CONF_FREQUENCY,
+    CONF_HAS_LIGHT,
     CONF_HAS_ON,
     CONF_HAS_STOP,
     CONF_LIGHT_MODE,
@@ -119,6 +120,7 @@ def _build_queue(
     *,
     speed_count: int = 0,
     has_on: bool = False,
+    has_light: bool = False,
     has_stop: bool = False,
     light_mode: str = LIGHT_MODE_TOGGLE,
     customs: list[dict] = [],
@@ -135,6 +137,8 @@ def _build_queue(
         queue += [pk(f"speed_{i}") for i in range(1, speed_count + 1)]
         if has_on:
             queue.append(pk(CMD_ON))
+        if has_light:
+            queue.append(pk(CMD_LIGHT))
     elif entity_type == ENTITY_TYPE_COVER:
         queue.append(pk(CMD_OPEN))
         queue.append(pk(CMD_CLOSE))
@@ -387,6 +391,7 @@ class RfFanConfigFlow(_LearnFlowMixin, ConfigFlow, domain=DOMAIN):
         self._direct: bool = False
         self._entity_type: str = ENTITY_TYPE_FAN
         self._has_on: bool = False
+        self._has_light: bool = False
         self._has_stop: bool = False
         self._light_mode: str = LIGHT_MODE_TOGGLE
 
@@ -444,9 +449,11 @@ class RfFanConfigFlow(_LearnFlowMixin, ConfigFlow, domain=DOMAIN):
             if entity_type == ENTITY_TYPE_FAN:
                 self._speed_count = int(user_input[CONF_SPEED_COUNT])
                 self._has_on = user_input.get(CONF_HAS_ON, False)
+                self._has_light = user_input.get(CONF_HAS_LIGHT, False)
                 self._data.update({
                     CONF_SPEED_COUNT: self._speed_count,
                     CONF_HAS_ON: self._has_on,
+                    CONF_HAS_LIGHT: self._has_light,
                 })
             elif entity_type == ENTITY_TYPE_COVER:
                 self._has_stop = user_input.get(CONF_HAS_STOP, False)
@@ -466,6 +473,7 @@ class RfFanConfigFlow(_LearnFlowMixin, ConfigFlow, domain=DOMAIN):
                 entity_type,
                 speed_count=self._speed_count,
                 has_on=self._has_on,
+                has_light=self._has_light,
                 has_stop=self._has_stop,
                 light_mode=self._light_mode,
                 customs=self._customs,
@@ -479,6 +487,7 @@ class RfFanConfigFlow(_LearnFlowMixin, ConfigFlow, domain=DOMAIN):
                 selector.NumberSelectorConfig(min=1, max=10, step=1, mode=selector.NumberSelectorMode.BOX)
             )
             fields[vol.Required(CONF_HAS_ON, default=False)] = selector.BooleanSelector()
+            fields[vol.Required(CONF_HAS_LIGHT, default=False)] = selector.BooleanSelector()
         elif entity_type == ENTITY_TYPE_COVER:
             fields[vol.Required(CONF_HAS_STOP, default=True)] = selector.BooleanSelector()
         elif entity_type == ENTITY_TYPE_LIGHT:
@@ -646,6 +655,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
 
             speed_count = 0
             has_on = False
+            has_light = False
             has_stop = False
             light_mode = LIGHT_MODE_TOGGLE
             customs: list[dict] = []
@@ -654,6 +664,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
             if entity_type == ENTITY_TYPE_FAN:
                 speed_count = int(user_input.get(CONF_SPEED_COUNT, 3))
                 has_on = user_input.get(CONF_HAS_ON, False)
+                has_light = user_input.get(CONF_HAS_LIGHT, False)
             elif entity_type == ENTITY_TYPE_COVER:
                 has_stop = user_input.get(CONF_HAS_STOP, True)
             elif entity_type == ENTITY_TYPE_LIGHT:
@@ -666,6 +677,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
                 "key_prefix": self._adding_key_prefix,
                 "speed_count": speed_count,
                 "has_on": has_on,
+                "has_light": has_light,
                 "has_stop": has_stop,
                 "light_mode": light_mode,
             })
@@ -678,6 +690,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
                 entity_type,
                 speed_count=speed_count,
                 has_on=has_on,
+                has_light=has_light,
                 has_stop=has_stop,
                 light_mode=light_mode,
                 customs=customs,
@@ -695,6 +708,7 @@ class RfFanOptionsFlow(_LearnFlowMixin, OptionsFlow):
                 selector.NumberSelectorConfig(min=1, max=10, step=1, mode=selector.NumberSelectorMode.BOX)
             )
             fields[vol.Required(CONF_HAS_ON, default=False)] = selector.BooleanSelector()
+            fields[vol.Required(CONF_HAS_LIGHT, default=False)] = selector.BooleanSelector()
         elif entity_type == ENTITY_TYPE_COVER:
             fields[vol.Required(CONF_HAS_STOP, default=True)] = selector.BooleanSelector()
         elif entity_type == ENTITY_TYPE_LIGHT:

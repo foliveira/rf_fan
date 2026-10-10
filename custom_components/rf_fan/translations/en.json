@@ -17,6 +17,7 @@
         "data": {
           "speed_count": "Number of speeds",
           "has_on_button": "Remote has a separate On button",
+          "has_light": "Fan has a light (learn the remote's light button)",
           "has_stop_button": "Remote has a Stop button",
           "light_mode": "Light control type",
           "direct_capture": "Skip the frequency sweep (try this if the remote won't detect)"
@@ -95,6 +96,7 @@
         "data": {
           "speed_count": "Number of speeds",
           "has_on_button": "Remote has a separate On button",
+          "has_light": "Fan has a light (learn the remote's light button)",
           "has_stop_button": "Remote has a Stop button",
           "light_mode": "Light control type"
         }
