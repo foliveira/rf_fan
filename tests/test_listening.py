@@ -1,7 +1,11 @@
 """Following the physical remote through the Broadlink's receiver."""
 
 import asyncio
+from base64 import b64encode
+import logging
 from unittest.mock import patch
+
+import pytest
 
 from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
@@ -28,13 +32,20 @@ async def test_remote_press_updates_the_fan(
 
 
 async def test_off_and_unknown_codes(
-    hass: HomeAssistant, rm4: FakeRM4Pro, broadlink_rf: str
+    hass: HomeAssistant,
+    rm4: FakeRM4Pro,
+    broadlink_rf: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    caplog.set_level(logging.DEBUG, "custom_components.rf_fan")
     await setup_entry(hass, fan_entry(broadlink_rf))
     await hear(hass, rm4, burst(FAN_CODES["speed_1"], skip=11, jitter=50))
     assert _fan(hass).attributes["percentage"] == 33
-    await hear(hass, rm4, burst(0x5A5A02, jitter=20))  # some other remote
+    other_remote = burst(0x5A5A02, jitter=20)
+    await hear(hass, rm4, other_remote)
     assert _fan(hass).attributes["percentage"] == 33
+    # Logged in a learned code's encoding, to compare the two.
+    assert b64encode(other_remote).decode() in caplog.text
     await hear(hass, rm4, burst(FAN_CODES["off"], skip=4, jitter=50))
     assert _fan(hass).state == "off"
 

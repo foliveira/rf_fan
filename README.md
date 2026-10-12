@@ -111,7 +111,9 @@ Things to know:
   be matched.
 
 To see what the Broadlink hears and what it matched, enable debug logging for
-`custom_components.rf_fan`.
+`custom_components.rf_fan`. Each capture is logged in base64, the encoding of a
+learned code's `b64` in the config entry. Debug logging for the Broadlink
+integration also shows when its receiver is armed and when it reports a capture.
 
 ## How it works
 

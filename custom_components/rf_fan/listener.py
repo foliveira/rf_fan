@@ -12,6 +12,7 @@ had sent the code.
 from __future__ import annotations
 
 import asyncio
+from base64 import b64encode
 from collections import Counter
 from contextlib import aclosing, suppress
 from dataclasses import dataclass, field
@@ -223,6 +224,8 @@ class RfListener:
         except IndexError:  # the declared length cuts a long pulse short
             _LOGGER.debug("rf_fan: ignoring a malformed capture %s", packet.hex())
             return
+        # The same encoding as a learned code's "b64", to compare the two.
+        _LOGGER.debug("rf_fan: heard %s", b64encode(packet).decode())
         for entry_id in self.entry_ids:
             if (entry := self.hass.config_entries.async_get_entry(entry_id)) is None:
                 continue
