@@ -15,6 +15,7 @@ import asyncio
 from collections import Counter
 from contextlib import aclosing, suppress
 from dataclasses import dataclass, field
+from functools import lru_cache
 import logging
 from statistics import median
 import time
@@ -49,9 +50,8 @@ _RETRY_SECONDS = 30
 # press and is ignored.
 DEBOUNCE_SECONDS = 2.0
 
-# A capture holds one frame repeated, separated by the longest gaps in it. Any
-# space longer than half the longest one, and longer than the fixed 1.3 ms
-# split mercator.py uses, ends a frame.
+# A capture holds one frame repeated. A space no longer than the fixed 1.3 ms
+# split mercator.py uses never ends a frame.
 _MIN_FRAME_GAP_US = 1300
 
 # Two pulses are the same if they differ by at most 150 us or 30 % of the
@@ -64,20 +64,50 @@ _TOLERANCE_RATIO = 0.3
 _MIN_PULSES = 16
 
 
-def _reference(timings: list[int]) -> tuple[list[int], float] | None:
-    """Return a learned code's frame and the gap that separates its repeats.
-
-    The frame is the per-pulse median of the capture's full-length repeats,
-    which votes out a pulse the receiver garbled in one of them.
-    """
-    longest = max((-t for t in timings[1:-1] if t < 0), default=0)
-    gap = max(_MIN_FRAME_GAP_US, longest / 2)
+def _repeats(timings: list[int], gap: float) -> list[list[int]]:
+    """Cut a capture at the spaces longer than ``gap``; return every copy of
+    its most common frame, or nothing if no frame is long enough."""
     frames = [f for f in split_frames(timings, gap) if len(f) >= _MIN_PULSES]
     if not frames:
-        return None
+        return []
     size = Counter(len(f) for f in frames).most_common(1)[0][0]
-    repeats = [f for f in frames if len(f) == size]
-    return [round(median(pulse)) for pulse in zip(*repeats, strict=True)], gap
+    return [f for f in frames if len(f) == size]
+
+
+@lru_cache(maxsize=256)
+def _reference(timings: tuple[int, ...]) -> tuple[list[int], float] | None:
+    """Return a learned code's frame and the gap that separates its repeats.
+
+    Besides the code, a capture can hold a stray pulse and a silence longer
+    than the gap between repeats, or a pause between two bursts of the code.
+    So half of each long space is tried as the gap, and the longest one that
+    cuts at least half as many copies of a frame as the best one does is
+    kept. Cutting at a silence leaves one or two pieces, while cutting inside
+    the frames finds more copies only when part of a frame repeats within it.
+
+    The frame is the per-pulse median of the copies, which votes out a pulse
+    the receiver garbled in one of them. The gap returned for heard captures
+    lies halfway between the longest space inside the frame and the shortest
+    space the learned capture was cut at, leaving room for jitter both ways.
+    The idle that ends a capture is not a gap between repeats.
+    """
+    spaces = [-t for t in timings[1:-1] if t < 0]
+    cuts = {
+        gap: _repeats(list(timings), gap)
+        for gap in {
+            _MIN_FRAME_GAP_US,
+            *(space / 2 for space in spaces if space > 2 * _MIN_FRAME_GAP_US),
+        }
+    }
+    most = max(map(len, cuts.values()))
+    if not most:
+        return None
+    gap = max(gap for gap, repeats in cuts.items() if 2 * len(repeats) >= most)
+    frame = [round(median(pulse)) for pulse in zip(*cuts[gap], strict=True)]
+    inside = max((-t for t in frame if t < 0), default=0)
+    if (between := min((s for s in spaces if s > gap), default=None)) is not None:
+        gap = max(_MIN_FRAME_GAP_US, (inside + between) / 2)
+    return frame, gap
 
 
 def _close(a: int, b: int) -> bool:
@@ -89,7 +119,7 @@ def _close(a: int, b: int) -> bool:
 
 def heard_matches(learned: list[int], heard: list[int]) -> bool:
     """Whether a heard capture holds a whole frame of a learned code."""
-    if (reference := _reference(learned)) is None:
+    if (reference := _reference(tuple(learned))) is None:
         return False
     frame, gap = reference
     return any(
